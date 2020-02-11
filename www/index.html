@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Flocking sim!=</title>
+    <script id="bounds-vert" type="x-shader/x-vertex">
+      uniform mat4 u_viewProjection;
+      uniform mat4 u_viewInverse;
+
+      attribute vec4 position;
+      attribute vec4 color;
+
+      varying vec4 v_color;
+
+      void main() {
+        gl_Position = u_viewProjection * position;
+
+        // Pass the color to the fragment shader.
+        v_color = color;
+      }
+    </script>
+    <script id="boid-vert" type="x-shader/x-vertex">
+        uniform mat4 u_viewProjection;
+        uniform mat4 u_viewInverse;
+
+        attribute vec4 instanceColor;
+        attribute mat4 instanceWorld;
+        attribute vec4 position;
+
+        varying vec4 v_position;
+        varying vec4 v_color;
+
+        void main() {
+          v_color = instanceColor;
+          vec4 worldPosition = instanceWorld * position;
+          v_position = u_viewProjection * worldPosition;
+          gl_Position = v_position;
+        }
+    </script>
+    <script id="color-frag" type="x-shader/x-fragment" >
+        precision mediump float;
+
+        varying vec4 v_color;
+
+        void main() {
+          gl_FragColor = v_color;
+        }
+    </script>
+    <style>
+      body {
+        margin: 0;
+      }
+      #c {
+        width: 100%;
+        height: 100%;
+      }
+      #fps {
+        position: fixed;
+        left: 25px;
+        top: 25px;
+        white-space: pre;
+        font-family: monospace;
+        background: rgba(192, 192, 192, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+    <div id="fps"></div>
+    <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
+    <script src="./bootstrap.js"></script>
+  </body>
+</html>

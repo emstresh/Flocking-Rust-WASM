@@ -18,7 +18,6 @@ features = [
 
 [dependencies]
 wasm-bindgen = "0.2"
-#cgmath = "0.17.0"
 js-sys = "0.3.25"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
