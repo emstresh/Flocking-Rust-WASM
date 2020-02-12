@@ -7,7 +7,7 @@ import { fps } from "./js/stats";
 
 const DIMENSION = 500;
 const NUM_GRID_CHUNKS = 100;
-const NUM_BOIDS = 2000;
+const NUM_BOIDS = 5000;
 
 const universe = Universe.new(DIMENSION, NUM_GRID_CHUNKS, NUM_BOIDS);
 
