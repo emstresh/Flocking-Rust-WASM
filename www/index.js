@@ -114,10 +114,23 @@ const PREDATOR_RADIUS = 10.0;
 const predator_geometry_collection = {};
 for (let i = 3; i <= 10; i++) { // predators range from 3 to 10 sides only
   predator_geometry_collection[i] = ngon(i, PREDATOR_RADIUS);
+  Object.assign(predator_geometry_collection[i], {
+    instanceWorld: {
+      numComponents: 16,
+      data: [],
+      divisor: 1
+    },
+    instanceColor: {
+      numComponents: 3,
+      data: [],
+      divisor: 1
+    }
+  });
 }
 
 function drawPredators() {
   const numPredators = universe.num_predators();
+
   const eaten = new Uint8Array(memory.buffer, universe.predators_eaten(), numPredators);
   const predatorDistribution = {};
   for (let i = 0; i < numPredators; i++) {
@@ -140,23 +153,12 @@ function drawPredators() {
       // fill in the colors for the predators of this size
       for (let j = 0; j < 3; j++) { colors[i * 3 + j] = pColors[idx * 3 + j]; }
     }
-    if (predator_geometry_collection[size]) {
-      Object.assign(predator_geometry_collection[size], {
-        instanceWorld: {
-          numComponents: 16,
-          data: matrices,
-          divisor: 1
-        },
-        instanceColor: {
-          numComponents: 3,
-          data: colors,
-          divisor: 1
-        }
-      });
-    }
+    predator_geometry_collection[size].instanceWorld.data = matrices;
+    predator_geometry_collection[size].instanceColor.data = colors;
   }
 
   gl.useProgram(boidProgramInfo.program);
+  twgl.setUniforms(boidProgramInfo, uniforms);
   for (let size in predatorDistribution) {
     let arrays = predator_geometry_collection[size];
 
@@ -164,8 +166,7 @@ function drawPredators() {
     const vertexArrayInfo = twgl.createVertexArrayInfo(gl, boidProgramInfo, bufferInfo);
 
     twgl.setBuffersAndAttributes(gl, boidProgramInfo, vertexArrayInfo);
-    twgl.setUniforms(boidProgramInfo, uniforms);
-    twgl.drawBufferInfo(gl, vertexArrayInfo, gl.TRIANGLES, vertexArrayInfo.numElements);
+    twgl.drawBufferInfo(gl, vertexArrayInfo, gl.TRIANGLES, vertexArrayInfo.numElements, 0, predatorDistribution[size].length);
   }
 }
 

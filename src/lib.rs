@@ -176,8 +176,8 @@ impl Universe {
   }
 
   pub fn tick(&mut self, delta: f32) {
-    (0..self.num_predators).for_each(|i| self.update_predator(delta, i));
     (0..self.num_boids).for_each(|i| self.update_boid(delta, i));
+    (0..self.num_predators).for_each(|i| self.update_predator(delta, i));
   }
 
   pub fn num_boids(&self) -> usize {
@@ -492,7 +492,10 @@ impl Universe {
     let idx = grid_cell_index(px, py, pz, self.num_chunks, self.chunk_size);
     self.pred_per_grid_cell[idx].push(new_idx);
 
-    // start off with identity matrix
+    // set new transformation matrix
     (0..16).for_each(|m| self.pred_mat.push(IDENTITY[m]));
+    let mat: &mut [f32] = &mut self.pred_mat[(new_idx * 16)..(new_idx * 16 + 16)];
+    math::translation(px, py, pz, mat);
+    math::rotate(&self.pred_vel[(new_idx * 3)..(new_idx * 3 + 3)], mat);
   }
 }
