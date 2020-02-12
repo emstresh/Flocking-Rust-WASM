@@ -208,12 +208,12 @@ impl Universe {
     self.pred_pos.as_ptr()
   }
 
-  pub fn predators_matrices(&self, i: usize) -> *const f32 {
-    self.pred_mat[(i * 16)..(i * 16 + 16)].as_ptr()
+  pub fn predators_matrices(&self) -> *const f32 {
+    self.pred_mat.as_ptr()
   }
 
-  pub fn predators_colors(&self, i: usize) -> *const u8 {
-    self.pred_col[(i * 3)..(i * 3 + 3)].as_ptr()
+  pub fn predators_colors(&self) -> *const u8 {
+    self.pred_col.as_ptr()
   }
 
   pub fn predators_eaten(&self) -> *const u8 {
@@ -383,7 +383,7 @@ impl Universe {
     math::translation(px, py, pz, mat);
     math::rotate(&self.pred_vel[(i * 3)..(i * 3 + 3)], mat);
 
-    if self.pred_num_eaten[i] == 10 {
+    if self.pred_num_eaten[i] >= 10 {
       self.split_predator(i);
     }
   }
@@ -406,12 +406,8 @@ impl Universe {
           let pj = &self.boids_pos[(idx * 3)..(idx * 3 + 3)];
           let vj = &self.boids_vel[(idx * 3)..(idx * 3 + 3)];
 
-          let d = v3_magnitude(pj[0] - p[0], pj[1] - p[1], pj[2] - p[2]);
-
-          if d < 50.0 {
-            velocity_match(self.k_velocity_matching, p, v, pj, vj, acc);
-            avoid(self.k_boid_avoidance, p, v, pj, vj, acc);
-          }
+          velocity_match(self.k_velocity_matching, p, v, pj, vj, acc);
+          avoid(self.k_boid_avoidance, p, v, pj, vj, acc);
         }
       }
 
@@ -471,8 +467,8 @@ impl Universe {
     let new_idx = self.num_predators;
     self.num_predators += 1;
 
-    self.pred_num_eaten[i] = 5;
-    self.pred_num_eaten.push(5);
+    self.pred_num_eaten[i] = 3;
+    self.pred_num_eaten.push(3);
 
     let (px, py, pz) = (self.pred_pos[i * 3], self.pred_pos[i * 3 + 1], self.pred_pos[i * 3 + 2]);
     let (vx, vy, vz) = (self.pred_vel[i * 3], self.pred_vel[i * 3 + 1], self.pred_vel[i * 3 + 2]);

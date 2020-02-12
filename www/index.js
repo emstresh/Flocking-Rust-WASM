@@ -7,7 +7,7 @@ import { fps } from "./js/stats";
 
 const DIMENSION = 500;
 const NUM_GRID_CHUNKS = 100;
-const NUM_BOIDS = 500;
+const NUM_BOIDS = 2000;
 
 const universe = Universe.new(DIMENSION, NUM_GRID_CHUNKS, NUM_BOIDS);
 
@@ -108,40 +108,64 @@ function drawBoids() {
 //
 // PREDATORS
 //
+const PREDATOR_RADIUS = 10.0;
+
+// pregenerate geometry for the possible predator polygons
+const predator_geometry_collection = {};
+for (let i = 3; i <= 10; i++) { // predators range from 3 to 10 sides only
+  predator_geometry_collection[i] = ngon(i, PREDATOR_RADIUS);
+}
+
 function drawPredators() {
-  // TODO: new shader to get rid of instancing
-  // TODO: can we only update some things on change?
-  // TODO: why weren't my array views working?
   const numPredators = universe.num_predators();
-  
-  const eatenPtr = universe.predators_eaten();
-  const eaten = new Uint8Array(memory.buffer, eatenPtr, numPredators);
+  const eaten = new Uint8Array(memory.buffer, universe.predators_eaten(), numPredators);
+  const predatorDistribution = {};
+  for (let i = 0; i < numPredators; i++) {
+    let numEaten = eaten[i];
+    if (!predatorDistribution[numEaten]) predatorDistribution[numEaten] = [];
+    predatorDistribution[numEaten].push(i);
+  }
+
+  // instance predators by their size
+  const predMatrices = new Float32Array(memory.buffer, universe.predators_matrices(), numPredators * 16);
+  const pColors = new Uint8Array(memory.buffer, universe.predators_colors(), numPredators * 3);
+  for (let size in predatorDistribution) {
+    let predatorIndices = predatorDistribution[size];
+    const matrices = new Float32Array(predatorIndices.length * 16);
+    const colors = new Uint8Array(predatorIndices.length * 3);
+    for (let i = 0; i < predatorIndices.length; i++) {
+      let idx = predatorIndices[i];
+      // fill in the matrices for the predators of this size
+      for (let j = 0; j < 16; j++) { matrices[i * 16 + j] = predMatrices[idx * 16 + j]; }
+      // fill in the colors for the predators of this size
+      for (let j = 0; j < 3; j++) { colors[i * 3 + j] = pColors[idx * 3 + j]; }
+    }
+    if (predator_geometry_collection[size]) {
+      Object.assign(predator_geometry_collection[size], {
+        instanceWorld: {
+          numComponents: 16,
+          data: matrices,
+          divisor: 1
+        },
+        instanceColor: {
+          numComponents: 3,
+          data: colors,
+          divisor: 1
+        }
+      });
+    }
+  }
 
   gl.useProgram(boidProgramInfo.program);
-  for (let i = 0; i < numPredators; i++) {
-    const predMatrixPtr = universe.predators_matrices(i);
-    const predMatrices = new Float32Array(memory.buffer, predMatrixPtr, 16);
-    const pColorsPtr = universe.predators_colors(i);
-    const pColors = new Uint8Array(memory.buffer, pColorsPtr, 3);
-    let arrays = ngon(eaten[i], 10);
-    Object.assign(arrays, {
-      instanceWorld: {
-        numComponents: 16,
-        data: predMatrices,
-        divisor: 1
-      },
-      instanceColor: {
-        numComponents: 3,
-        data: pColors,
-        divisor: 1
-      }
-    });
+  for (let size in predatorDistribution) {
+    let arrays = predator_geometry_collection[size];
+
     const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
     const vertexArrayInfo = twgl.createVertexArrayInfo(gl, boidProgramInfo, bufferInfo);
 
     twgl.setBuffersAndAttributes(gl, boidProgramInfo, vertexArrayInfo);
     twgl.setUniforms(boidProgramInfo, uniforms);
-    twgl.drawBufferInfo(gl, vertexArrayInfo, gl.TRIANGLES, vertexArrayInfo.numElements, 0, 1);
+    twgl.drawBufferInfo(gl, vertexArrayInfo, gl.TRIANGLES, vertexArrayInfo.numElements);
   }
 }
 
@@ -214,7 +238,6 @@ function ngon(numSides, radius) {
       geometry_array.indices.push(1);
     } else {
       geometry_array.indices.push(i + 2);
-      // geometry_array.indices.push((i + 2) % numSides + 1);
     }
   }
 

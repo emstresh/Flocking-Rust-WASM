@@ -20,22 +20,22 @@
       }
     </script>
     <script id="boid-vert" type="x-shader/x-vertex">
-        uniform mat4 u_viewProjection;
-        uniform mat4 u_viewInverse;
+      uniform mat4 u_viewProjection;
+      uniform mat4 u_viewInverse;
 
-        attribute vec4 instanceColor;
-        attribute mat4 instanceWorld;
-        attribute vec4 position;
+      attribute vec4 instanceColor;
+      attribute mat4 instanceWorld;
+      attribute vec4 position;
 
-        varying vec4 v_position;
-        varying vec4 v_color;
+      varying vec4 v_position;
+      varying vec4 v_color;
 
-        void main() {
-          v_color = instanceColor;
-          vec4 worldPosition = instanceWorld * position;
-          v_position = u_viewProjection * worldPosition;
-          gl_Position = v_position;
-        }
+      void main() {
+        v_color = instanceColor;
+        vec4 worldPosition = instanceWorld * position;
+        v_position = u_viewProjection * worldPosition;
+        gl_Position = v_position;
+      }
     </script>
     <script id="color-frag" type="x-shader/x-fragment" >
         precision mediump float;

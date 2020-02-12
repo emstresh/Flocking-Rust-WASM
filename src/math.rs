@@ -114,11 +114,11 @@ pub const IDENTITY: [f32; 16] = [
 
 pub fn rotate<'matrix>(v: &[f32], dst: &'matrix mut [f32]) -> &'matrix [f32] {
   let (ux, uy, uz) = v3_normalize((v[0], v[1], v[2]));
-  let phi = uy.atan2(ux);
-  let theta = ux.atan2(uz);
-  let psi = uz.atan2(ux);
+  let phi = uy.atan2(uz);
+  let theta = uz.atan2(ux);
+  let psi = ux.atan2(uz);
   rotate_z(phi, dst);
-  rotate_y(theta, dst);
+  rotate_y(-theta, dst);
   rotate_x(psi, dst);
   dst
 }
