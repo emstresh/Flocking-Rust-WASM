@@ -99,9 +99,7 @@ function drawBoids() {
   const bufferInfo = twgl.createBufferInfoFromArrays(gl, boid_geometry_arrays);
   const vertexArrayInfo = twgl.createVertexArrayInfo(gl, boidProgramInfo, bufferInfo);
 
-  gl.useProgram(boidProgramInfo.program);
   twgl.setBuffersAndAttributes(gl, boidProgramInfo, vertexArrayInfo);
-  twgl.setUniforms(boidProgramInfo, uniforms);
   twgl.drawBufferInfo(gl, vertexArrayInfo, gl.TRIANGLES, vertexArrayInfo.numElements, 0, numBoids);
 }
 
@@ -157,8 +155,6 @@ function drawPredators() {
     predator_geometry_collection[size].instanceColor.data = colors;
   }
 
-  gl.useProgram(boidProgramInfo.program);
-  twgl.setUniforms(boidProgramInfo, uniforms);
   for (let size in predatorDistribution) {
     let arrays = predator_geometry_collection[size];
 
@@ -212,8 +208,12 @@ function render(time) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   drawBounds();
+
+  gl.useProgram(boidProgramInfo.program);
+  twgl.setUniforms(boidProgramInfo, uniforms);
   drawBoids();
   drawPredators();
+  
   updateCamera(time);
 
   then = time;
