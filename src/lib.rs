@@ -152,10 +152,10 @@ impl Universe {
       num_chunks,
       chunk_size,
       k_obstacle_avoidance: 500.0,
-      k_velocity_matching: 35.0,
+      k_velocity_matching: 50.0,
       k_boid_avoidance: 1000.0,
-      k_pred_avoidance: 100.0,
-      boid_max_vel: 30.0,
+      k_pred_avoidance: 1000.0,
+      boid_max_vel: 50.0,
       num_boids,
       boids_pos,
       boids_vel,
@@ -164,7 +164,7 @@ impl Universe {
       boids_alive: vec![true; num_boids],
       boids_per_grid_cell,
       k_eat: 250.0,
-      pred_max_vel: 50.0,
+      pred_max_vel: 60.0,
       num_predators,
       pred_pos,
       pred_vel,
@@ -243,18 +243,18 @@ fn set_vec3<T>(arr: &mut Vec<T>, i: usize, x: T, y: T, z: T) {
   arr[i * 3 + 2] = z;
 }
 
-fn velocity_match(k: f32, my_pos: &[f32], my_vel: &[f32], other_pos: &[f32], other_vel: &[f32], acc: &mut [f32]) {
+fn velocity_match(k: f32, inv_num_boids: f32, my_pos: &[f32], my_vel: &[f32], other_pos: &[f32], other_vel: &[f32], acc: &mut [f32]) {
   // distance and inverse distance between the two boids
   let d = v3_magnitude(other_pos[0] - my_pos[0], other_pos[1] - my_pos[1], other_pos[2] - my_pos[2]);
   let d_inv = 1.0 / d;
 
   // adjust acceleration based on k factor and distance
-  acc[0] = acc[0] + k * d_inv * (other_vel[0] - my_vel[0]);
-  acc[1] = acc[1] + k * d_inv * (other_vel[1] - my_vel[1]);
-  acc[2] = acc[2] + k * d_inv * (other_vel[2] - my_vel[2]);
+  acc[0] = acc[0] + k * d_inv * (other_vel[0] - my_vel[0]) * inv_num_boids;
+  acc[1] = acc[1] + k * d_inv * (other_vel[1] - my_vel[1]) * inv_num_boids;
+  acc[2] = acc[2] + k * d_inv * (other_vel[2] - my_vel[2]) * inv_num_boids;
 }
 
-fn avoid(k: f32, my_pos: &[f32], my_vel: &[f32], other_pos: &[f32], other_vel: &[f32], acc: &mut [f32]) {
+fn avoid(k: f32, inv_num_boids: f32, my_pos: &[f32], my_vel: &[f32], other_pos: &[f32], other_vel: &[f32], acc: &mut [f32]) {
   // distance and inverse distance between the two boids
   let d = v3_magnitude(other_pos[0] - my_pos[0], other_pos[1] - my_pos[1], other_pos[2] - my_pos[2]);
   let d_inv = 1.0 / d;
@@ -264,9 +264,9 @@ fn avoid(k: f32, my_pos: &[f32], my_vel: &[f32], other_pos: &[f32], other_vel: &
   let v_inv = 1.0 / v_mag;
 
   // adjust acceleration based on k factor and distance
-  acc[0] = acc[0] - k * d_inv * (other_vel[0] - my_vel[0]) * v_inv;
-  acc[1] = acc[1] - k * d_inv * (other_vel[1] - my_vel[1]) * v_inv;
-  acc[2] = acc[2] - k * d_inv * (other_vel[2] - my_vel[2]) * v_inv;
+  acc[0] = acc[0] - k * d_inv * (other_vel[0] - my_vel[0]) * v_inv * inv_num_boids;
+  acc[1] = acc[1] - k * d_inv * (other_vel[1] - my_vel[1]) * v_inv * inv_num_boids;
+  acc[2] = acc[2] - k * d_inv * (other_vel[2] - my_vel[2]) * v_inv * inv_num_boids;
 }
 
 fn avoid_bounds(k: f32, dimension: f32, my_pos: &[f32], acc: &mut [f32]) {
@@ -320,12 +320,14 @@ impl Universe {
     // new acceleration value
     let acc: &mut [f32] = &mut vec![0.0; 3];
 
+    // make predators try to avoid cube boundaries
+    avoid_bounds(self.k_obstacle_avoidance, self.dimension as f32, p, acc);
+
     // find the closest boid (check within our grid cell)
     let mut closest_boid_idx = 0;
     let mut closest_boid_distance = self.dimension as f32;
     let cell_index = grid_cell_index(p[0], p[1], p[2], self.num_chunks, self.chunk_size);
     for &idx in &self.boids_per_grid_cell[cell_index] {
-    // for idx in 0..self.num_boids {
       if self.boids_alive[idx] {
         // position and velocity of this boid
         let pj = &self.boids_pos[(idx * 3)..(idx * 3 + 3)];
@@ -356,9 +358,6 @@ impl Universe {
     //     avoid(self.k_boid_avoidance, p, v, pj, vj, acc);
     //   }
     // }
-
-    // make predators try to avoid cube boundaries
-    avoid_bounds(self.k_obstacle_avoidance, self.dimension as f32, p, acc);
 
     // calculate new velocity and cap it to the maximum velocity
     let (vx, vy, vz) = calculate_new_velocity(delta, p, v, acc, self.pred_max_vel, self.dimension as f32);
@@ -398,27 +397,19 @@ impl Universe {
       // new acceleration value
       let acc: &mut [f32] = &mut vec![0.0; 3];
 
-      // flock and velocity match with fellow boids in the cell
+      // make boids try to avoid cube boundaries
+      avoid_bounds(self.k_obstacle_avoidance, self.dimension as f32, p, acc);
+
       let cell_index = grid_cell_index(p[0], p[1], p[2], self.num_chunks, self.chunk_size);
-      for &idx in &self.boids_per_grid_cell[cell_index] {
-        if idx != i && self.boids_alive[idx] {
-          // position and velocity of this boid
-          let pj = &self.boids_pos[(idx * 3)..(idx * 3 + 3)];
-          let vj = &self.boids_vel[(idx * 3)..(idx * 3 + 3)];
 
-          velocity_match(self.k_velocity_matching, p, v, pj, vj, acc);
-          avoid(self.k_boid_avoidance, p, v, pj, vj, acc);
-        }
-      }
-
+      let inv_num_preds = 1.0 / (self.pred_per_grid_cell[cell_index].len() as f32);
       // avoid predators
       for &idx in &self.pred_per_grid_cell[cell_index] {
-      // for idx in 0..self.num_predators {
         let pj = &self.pred_pos[(idx * 3)..(idx * 3 + 3)];
         let vj = &self.pred_vel[(idx * 3)..(idx * 3 + 3)];
         let d = v3_magnitude(pj[0] - p[0], pj[1] - p[1], pj[2] - p[2]);
 
-        avoid(self.k_pred_avoidance, p, v, pj, vj, acc);
+        avoid(self.k_pred_avoidance, inv_num_preds, p, v, pj, vj, acc);
 
         // if the predator is too close, the boid is eaten
         if d < self.boid_max_vel {
@@ -428,8 +419,18 @@ impl Universe {
         }
       }
 
-      // make boids try to avoid cube boundaries
-      avoid_bounds(self.k_obstacle_avoidance, self.dimension as f32, p, acc);
+      let inv_num_boids = 1.0 / (self.boids_per_grid_cell[cell_index].len() - 1) as f32;
+      // flock and velocity match with fellow boids in the cell
+      for &idx in &self.boids_per_grid_cell[cell_index] {
+        if idx != i && self.boids_alive[idx] {
+          // position and velocity of this boid
+          let pj = &self.boids_pos[(idx * 3)..(idx * 3 + 3)];
+          let vj = &self.boids_vel[(idx * 3)..(idx * 3 + 3)];
+
+          avoid(self.k_boid_avoidance, inv_num_boids, p, v, pj, vj, acc);
+          velocity_match(self.k_velocity_matching, inv_num_boids, p, v, pj, vj, acc);
+        }
+      }
 
       // calculate new velocity and cap it to the maximum velocity
       let (vx, vy, vz) = calculate_new_velocity(delta, p, v, acc, self.boid_max_vel, self.dimension as f32);
