@@ -412,7 +412,7 @@ impl Universe {
         avoid(self.k_pred_avoidance, inv_num_preds, p, v, pj, vj, acc);
 
         // if the predator is too close, the boid is eaten
-        if d < self.boid_max_vel {
+        if d < 30.0 {
           // log!("CHOMP {}", i);
           self.boids_alive[i] = false;
           self.pred_num_eaten[idx] += 1;
