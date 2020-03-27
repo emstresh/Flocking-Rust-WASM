@@ -17,7 +17,7 @@ in root directory, and
 ```
 npm i
 ```
-in docs/ directory. Then
+in www/ directory. Then
 ```
 npm run start
 ```
